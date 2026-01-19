@@ -2,7 +2,7 @@
 
 public class IngredientCommand
 {
-    public IngredientCommand(Guid id,  string name, decimal price)
+    public IngredientCommand(Guid id, string name, decimal price)
     {
         Name = name;
         Price = price;
@@ -14,8 +14,9 @@ public class IngredientCommand
         Name = name;
         Price = price;
     }
+    public IngredientCommand() { }
 
-    public string Name { get; private set; } 
-    public decimal Price { get; private set; } 
-    public Guid Id { get; private set; }
+    public string Name { get; set; }
+    public decimal Price { get; set; }
+    public Guid Id { get; set; }
 }
