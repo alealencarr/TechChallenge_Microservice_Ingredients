@@ -1,8 +1,10 @@
 ﻿using Serilog;
 using Serilog.Core;
 using Serilog.Events;
+using System.Diagnostics.CodeAnalysis;
 
 namespace API.Extensions;
+[ExcludeFromCodeCoverage]
 
 public static class LogExtensions
 {

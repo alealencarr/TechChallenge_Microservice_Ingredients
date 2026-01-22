@@ -2,6 +2,7 @@
 using Application.Interfaces.DataSources;
 using Infrastructure.DataSources;
 using Infrastructure.DbContexts;
+using Microsoft.AspNetCore.Mvc;
 using Shared.DTO.Ingredient.Output;
 using Shared.Result;
 using System.Diagnostics.CodeAnalysis;
@@ -9,25 +10,22 @@ using System.Diagnostics.CodeAnalysis;
 namespace API.Endpoints.Ingredients;
 [ExcludeFromCodeCoverage]
 
-internal sealed class GetAll : IEndpoint
+internal sealed class GetByIds : IEndpoint
 {
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
-        app.MapGet("api/ingredients",
-           async (AppDbContext appDbContext, HttpContext httpContext) =>
+        app.MapPost("api/ingredients/listIngredients",
+           async (AppDbContext appDbContext, [FromBody] List<Guid> ids) =>
            {
-
                IIngredientDataSource dataSource = new IngredientDataSource(appDbContext);
                IngredientController _ingredientController = new IngredientController(dataSource);
-               var ingredients = await _ingredientController.GetAllIngredientsAsync();
+               var ingredient = await _ingredientController.GetIngredientByIds(ids);
 
-               return ingredients.Succeeded ? Results.Ok(ingredients) : Results.BadRequest(ingredients);
+               return ingredient.Succeeded ? Results.Ok(ingredient) : Results.NotFound(ingredient);
 
            })
            .WithTags("Ingredients")
-           .Produces<ICommandResult<List<IngredientOutputDto>>>()
-           .WithName("Ingredient.GetAll").RequireAuthorization();
+           .Produces<ICommandResult<IngredientOutputDto?>>()
+           .WithName("Ingredient.GetByIds").RequireAuthorization();//.RequireAuthorization();
     }
 }
-
-

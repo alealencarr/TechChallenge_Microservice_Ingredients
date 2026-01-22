@@ -2,7 +2,6 @@
 using API.Extensions;
 using API.Extensions.HealthCheck;
 using API.Extensions.Middlewares;
-using Application.Common;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Http.Json;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
@@ -10,16 +9,18 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Scalar.AspNetCore;
 using Serilog;
+using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using System.Text;
 using System.Text.Json.Serialization;
 
 namespace API;
+[ExcludeFromCodeCoverage]
+
 public static class DependencyInjection
 {
     public static IServiceCollection AddPresentation(this IServiceCollection services, IConfiguration configuration)
     {
-        Utils.Configure(configuration["ApiUrls:Base"]);
 
         services.AddAuthentication(configuration);
         services.AddAuthorization();

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<RunSettings>
+  <DataCollectionRunSettings>
+    <DataCollectors>
+      <DataCollector friendlyName="XPlat Code Coverage">
+        <Configuration>
+          <Format>cobertura</Format>
+          <Exclude>
+			  [Infrastructure]Infrastructure.Migrations.*,
+			  [Infrastructure]Infrastructure.DataSources.*,
+			  [Infrastructure]Infrastructure.DbModels.*,
+			  [Infrastructure]Infrastructure.DbContexts.*,
+			  [Infrastructure]*DependencyInjection*,
+			  [Infrastructure]*DataSeeder*,
+			  [Shared]Shared.DTO.*,
+			  [API]*,
+			  [*]*Program*,
+			  [*]*Startup*
+		  </Exclude>
+        </Configuration>
+      </DataCollector>
+    </DataCollectors>
+  </DataCollectionRunSettings>
+</RunSettings>

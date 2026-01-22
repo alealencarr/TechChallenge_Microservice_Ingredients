@@ -1,8 +1,10 @@
 ﻿using API.Endpoints;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 
 namespace Api.Extensions;
+[ExcludeFromCodeCoverage]
 
 public static class EndpointExtensions
 {

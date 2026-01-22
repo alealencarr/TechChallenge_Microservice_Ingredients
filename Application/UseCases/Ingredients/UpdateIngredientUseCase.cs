@@ -28,6 +28,10 @@ namespace Application.UseCases.Ingredients
                     throw new Exception($"Error: Ingredient not find by Id.");
 
                 ingredientExists.Price = ingredient.Price;
+
+                if(string.IsNullOrEmpty(ingredient.Name))
+                    throw new Exception($"Error: Favor informar o Name.");
+
                 ingredientExists.Name = ingredient.Name;
 
                 await _gateway.UpdateIngredient(ingredientExists);

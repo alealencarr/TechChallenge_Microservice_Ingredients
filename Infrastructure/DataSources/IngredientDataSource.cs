@@ -3,9 +3,12 @@ using Infrastructure.DbContexts;
 using Infrastructure.DbModels;
 using Microsoft.EntityFrameworkCore;
 using Shared.DTO.Ingrendient.Input;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Infrastructure.DataSources
 {
+    [ExcludeFromCodeCoverage]
+
     public class IngredientDataSource : IIngredientDataSource
     {
         private readonly AppDbContext _appDbContext;

@@ -1,9 +1,12 @@
 ﻿using Infrastructure.DbContexts;
 using Infrastructure.DbModels;
 using Microsoft.EntityFrameworkCore;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Infrastructure.Persistence
 {
+    [ExcludeFromCodeCoverage]
+
     public class DataSeeder
     {
 

@@ -1,8 +1,11 @@
 ﻿using Infrastructure.DbContexts;
 using Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using System.Diagnostics.CodeAnalysis;
 
 namespace API.Extensions;
+[ExcludeFromCodeCoverage]
+
 internal static class AppInitializer
 {
     internal static async Task<IApplicationBuilder> InitializeApp(this WebApplication app, Serilog.ILogger logger)

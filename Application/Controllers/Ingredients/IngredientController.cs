@@ -97,5 +97,24 @@ namespace Application.Controllers.Ingredients
             }
         }
 
+ 
+
+        public async Task<ICommandResult<List<IngredientOutputDto>?>> GetIngredientByIds(List<Guid> ids)
+        {
+            IngredientPresenter ingredientPresenter = new("Ingredientes encontrado!");
+
+            try
+            {
+                var ingredientGateway = IngredientGateway.Create(_dataSource);
+                var useCase = GetIngredientByIdsUseCase.Create(ingredientGateway);
+                var ingredient = await useCase.Run(ids);
+
+                return ingredient is null ? ingredientPresenter.Error<List<IngredientOutputDto>?>("Ingredients not found.") : ingredientPresenter.TransformList(ingredient);
+            }
+            catch (Exception ex)
+            {
+                return ingredientPresenter.Error<List<IngredientOutputDto>?>(ex.Message);
+            }
+        }
     }
 }

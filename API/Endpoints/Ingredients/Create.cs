@@ -8,9 +8,10 @@ using MiniValidation;
 using Shared.DTO.Ingredient.Output;
 using Shared.DTO.Ingredient.Request;
 using Shared.Result;
+using System.Diagnostics.CodeAnalysis;
 
 namespace API.Endpoints.Ingredients;
-
+[ExcludeFromCodeCoverage]
 internal sealed class Create : IEndpoint
 {
     public void MapEndpoint(IEndpointRouteBuilder app)

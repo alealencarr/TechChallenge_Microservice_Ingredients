@@ -1,8 +1,11 @@
 ﻿using Microsoft.AspNetCore.Diagnostics;
 using Shared.Result;
+using System.Diagnostics.CodeAnalysis;
 
 namespace API.Extensions
 {
+    [ExcludeFromCodeCoverage]
+
     public class GlobalExceptionHandler : IExceptionHandler
     {
         private readonly ILogger<GlobalExceptionHandler> _logger;

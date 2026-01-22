@@ -1,7 +1,10 @@
-name: Build and Deploy API to AKS
+name: Build and Deploy ms-ingredients
 
 on:
   push:
+    branches:
+      - main
+  pull_request:
     branches:
       - main
   workflow_dispatch:
@@ -11,23 +14,89 @@ env:
   RESOURCE_GROUP: ${{ secrets.RESOURCE_GROUP_NAME }}
   AKS_CLUSTER_NAME: ${{ secrets.AKS_CLUSTER_NAME }}
   IMAGE_TAG: ${{ github.sha }}
+  IMAGE_NAME: lanchonete-ingredients
+  MS_NAME: ms-ingredients
 
 jobs:
-  build-and-deploy:
+  build-and-test:
+    name: 'Build, Test & SonarCloud'
     runs-on: ubuntu-latest
     
     steps:
-      # 1. Checkout do código
+      - name: 'Checkout code'
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 'Setup .NET'
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: 'Restore dependencies'
+        run: dotnet restore
+
+      - name: 'Build'
+        run: dotnet build --no-restore --configuration Release
+
+      - name: 'Run tests with coverage'
+        run: |
+          dotnet test --no-build --configuration Release \
+            --collect:"XPlat Code Coverage" \
+            --results-directory ./TestResults \
+            --logger "trx;LogFileName=test-results.trx" \
+            -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=opencover
+
+      - name: 'Setup Java'
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: 'Install SonarScanner'
+        run: |
+          dotnet tool install --global dotnet-sonarscanner
+          echo "$HOME/.dotnet/tools" >> $GITHUB_PATH
+
+      - name: 'SonarCloud Analysis'
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          dotnet sonarscanner begin \
+            /k:"${{ secrets.SONAR_PROJECT_KEY }}" \
+            /o:"${{ secrets.SONAR_ORGANIZATION }}" \
+            /d:sonar.host.url="https://sonarcloud.io" \
+            /d:sonar.token="${{ secrets.SONAR_TOKEN }}" \
+            /d:sonar.cs.opencover.reportsPaths="**/coverage.opencover.xml" \
+            /d:sonar.qualitygate.wait=true
+          
+          dotnet build --no-restore --configuration Release
+          
+          dotnet sonarscanner end /d:sonar.token="${{ secrets.SONAR_TOKEN }}"
+
+      - name: 'Upload test results'
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results
+          path: ./TestResults
+
+  deploy:
+    name: 'Docker Build & Deploy to AKS'
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    
+    steps:
       - name: 'Checkout code'
         uses: actions/checkout@v4
 
-      # 2. Login no Azure
       - name: 'Azure Login'
         uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      # 3. Login no Azure Container Registry
       - name: 'Docker Login to ACR'
         uses: azure/docker-login@v1
         with:
@@ -35,157 +104,49 @@ jobs:
           username: ${{ fromJson(secrets.AZURE_CREDENTIALS).clientId }}
           password: ${{ fromJson(secrets.AZURE_CREDENTIALS).clientSecret }}
 
-      # 4. Build da imagem Docker
       - name: 'Build Docker image'
         run: |
-          echo "🐳 Building Docker image..."
-          docker build -t ${{ env.ACR_LOGIN_SERVER }}/lanchonete-api:${{ env.IMAGE_TAG }} .
-          echo "✅ Image built successfully!"
+          docker build \
+            -t ${{ env.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }} \
+            -t ${{ env.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:latest \
+            .
 
-      # 5. Push da imagem para o ACR
       - name: 'Push Docker image to ACR'
         run: |
-          echo "📦 Pushing image to ACR..."
-          docker push ${{ env.ACR_LOGIN_SERVER }}/lanchonete-api:${{ env.IMAGE_TAG }}
-          echo "✅ Image pushed successfully!"
+          docker push ${{ env.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
+          docker push ${{ env.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:latest
 
-      # 6. Configura kubectl para acessar o AKS
       - name: 'Set AKS context'
         uses: azure/aks-set-context@v3
         with:
           resource-group: ${{ env.RESOURCE_GROUP }}
           cluster-name: ${{ env.AKS_CLUSTER_NAME }}
 
-      # 6.1. Garante integração AKS → ACR  
       - name: 'Ensure AKS-ACR integration'
         run: |
-          echo "🔗 Ensuring AKS-ACR integration..."
-          az aks update --name ${{ env.AKS_CLUSTER_NAME }} --resource-group ${{ env.RESOURCE_GROUP }} --attach-acr ${{ env.ACR_LOGIN_SERVER }} || echo "⚠️ ACR already attached"
-          echo "✅ AKS-ACR integration verified!"
+          az aks update --name ${{ env.AKS_CLUSTER_NAME }} --resource-group ${{ env.RESOURCE_GROUP }} \
+            --attach-acr ${{ env.ACR_LOGIN_SERVER }} || echo "ACR already attached"
 
-      # 7. Cria/Atualiza secrets no Kubernetes
       - name: 'Create/Update Kubernetes secrets'
         run: |
-          echo "🔐 Creating Kubernetes secrets..."
-          kubectl create secret generic api-secrets \
+          kubectl create secret generic ms-ingredients-secrets \
             --from-literal=ConnectionStrings__Default='${{ secrets.DB_CONNECTION_STRING }}' \
-            --from-literal=AZURE_STORAGE_CONNECTION_STRING='${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}' \
             --dry-run=client -o yaml | kubectl apply -f -
-          echo "✅ Secrets configured!"
 
-      # 8. Substitui placeholders nos manifestos K8s
       - name: 'Replace placeholders in manifests'
         run: |
-          echo "📝 Replacing placeholders in Kubernetes manifests..."
           find ./k8s -type f -name "*.yaml" -exec sed -i "s|__ACR_LOGIN_SERVER__|${{ env.ACR_LOGIN_SERVER }}|g" {} +
           find ./k8s -type f -name "*.yaml" -exec sed -i "s|__IMAGE_TAG__|${{ env.IMAGE_TAG }}|g" {} +
-          echo "✅ Placeholders replaced!"
+          find ./k8s -type f -name "*.yaml" -exec sed -i "s|__IMAGE_NAME__|${{ env.IMAGE_NAME }}|g" {} +
 
-      # 9. Aplica os manifestos no AKS
       - name: 'Deploy to AKS'
-        run: |
-          echo "🚀 Deploying to AKS..."
-          kubectl apply -f k8s/
-          echo "✅ Deployment complete!"
+        run: kubectl apply -f k8s/
 
-      # 10. Verifica o status do deployment
-      - name: 'Verify deployment status'
+      - name: 'Verify deployment'
         run: |
-          echo "🔍 Checking deployment status..."
-          kubectl rollout status deployment/api-deployment-tc --timeout=5m || true
-          
-          echo ""
-          echo "📊 Deployment info:"
-          kubectl describe deployment api-deployment-tc
-          
-          echo ""
-          echo "🔍 Current pods:"
-          kubectl get pods -l app=api-tc
-          
-          echo ""
-          echo "📝 Pod logs (if any):"
-          POD_NAME=$(kubectl get pods -l app=api-tc -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
-          if [ ! -z "$POD_NAME" ]; then
-            echo "Pod: $POD_NAME"
-            kubectl logs $POD_NAME --tail=50 || echo "No logs available"
-            echo ""
-            echo "📋 Pod events:"
-            kubectl describe pod $POD_NAME | grep -A 20 Events || echo "No events"
-          else
-            echo "⚠️ No pods found!"
-            echo "Checking deployment events:"
-            kubectl describe deployment api-deployment-tc | grep -A 20 Events
-          fi
-          
-          echo ""
-          echo "🌐 Service status:"
-          kubectl get svc api-service-tc
-          
-          echo ""
-          echo "🔗 Ingress status:"
-          kubectl get ingress api-ingress
+          kubectl rollout status deployment/ms-ingredients-deployment --timeout=5m
+          kubectl get pods -l app=ms-ingredients
 
-      # 11. Reinicia AGIC para reprocessar Ingress  
-      - name: 'Restart AGIC to process Ingress'
-        run: |
-          echo "🔄 Restarting AGIC to ensure Ingress is processed..."
-          
-          # Deleta pod do AGIC
-          kubectl delete pod -n kube-system -l app=ingress-appgw
-          
-          echo "⏳ Waiting for AGIC to restart (30 seconds)..."
-          sleep 30
-          
-          # Aguarda novo pod ficar Ready
-          kubectl wait --for=condition=ready pod -n kube-system -l app=ingress-appgw --timeout=120s || true
-          
-          echo "⏳ Waiting for AGIC to reconfigure Application Gateway (90 seconds)..."
-          sleep 90
-          
-          echo "✅ AGIC restarted and processing complete!"
-
-      # 12. Verifica se Ingress tem IP  
-      - name: 'Verify Ingress has IP address'
-        run: |
-          echo "🔍 Verifying Ingress configuration..."
-          
-          kubectl get ingress api-ingress
-          
-          INGRESS_IP=$(kubectl get ingress api-ingress -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || echo "")
-          
-          if [ -z "$INGRESS_IP" ]; then
-            echo "⚠️ WARNING: Ingress still has no IP address!"
-            echo "This may need manual intervention."
-            exit 1
-          else
-            echo "✅ Ingress has IP: $INGRESS_IP"
-          fi
-
-      # 13. Verifica health do Application Gateway  
-      - name: 'Verify Application Gateway backend health'
-        run: |
-          echo "🔍 Checking Application Gateway backend health..."
-          
-          BACKEND_HEALTH=$(az network application-gateway show-backend-health \
-            --name agw-ingress-tchungry \
-            --resource-group MC_${{ env.RESOURCE_GROUP }}_${{ env.AKS_CLUSTER_NAME }}_brazilsouth \
-            --query "backendAddressPools[0].backendHttpSettingsCollection[0].servers[0].health" -o tsv 2>/dev/null || echo "Unknown")
-          
-          echo "Backend health: $BACKEND_HEALTH"
-          
-          if [ "$BACKEND_HEALTH" == "Healthy" ]; then
-            echo "✅ Backend is healthy! Deployment successful!"
-          else
-            echo "⚠️ Backend health: $BACKEND_HEALTH"
-            echo "Full health report:"
-            az network application-gateway show-backend-health \
-              --name agw-ingress-tchungry \
-              --resource-group MC_${{ env.RESOURCE_GROUP }}_${{ env.AKS_CLUSTER_NAME }}_brazilsouth
-          fi
-
-      # 11. Logout do Azure
       - name: 'Azure Logout'
         if: always()
-        run: |
-          az logout
-          echo "✅ Logged out from Azure"
+        run: az logout

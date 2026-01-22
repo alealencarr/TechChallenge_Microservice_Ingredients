@@ -1,7 +1,10 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Shared.DTO.Ingredient.Request
 {
+    [ExcludeFromCodeCoverage]
+
     public record IngredientRequestDto
     {
         [Required(ErrorMessage = "É necessário informar o preço.")]
