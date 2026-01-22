@@ -1,9 +1,12 @@
 ﻿using Shared.Result;
+using System.Diagnostics.CodeAnalysis;
 using System.Net;
 using System.Text.Json;
 
 namespace API.Extensions.Middlewares
 {
+    [ExcludeFromCodeCoverage]
+
     public class UnauthorizedTokenMiddleware : IMiddleware
     {
         public async Task InvokeAsync(HttpContext context, RequestDelegate next)

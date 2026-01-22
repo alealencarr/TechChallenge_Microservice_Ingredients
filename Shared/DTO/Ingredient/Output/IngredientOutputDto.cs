@@ -1,5 +1,9 @@
-﻿namespace Shared.DTO.Ingredient.Output
+﻿using System.Diagnostics.CodeAnalysis;
+
+namespace Shared.DTO.Ingredient.Output
 {
+    [ExcludeFromCodeCoverage]
+
     public record IngredientOutputDto
     {
         public Guid Id { get; set; }

@@ -4,8 +4,11 @@ using Infrastructure.DataSources;
 using Infrastructure.DbContexts;
 using Shared.DTO.Ingredient.Output;
 using Shared.Result;
+using System.Diagnostics.CodeAnalysis;
 
 namespace API.Endpoints.Ingredients;
+[ExcludeFromCodeCoverage]
+
 internal sealed class GetAll : IEndpoint
 {
     public void MapEndpoint(IEndpointRouteBuilder app)

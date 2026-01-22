@@ -5,8 +5,11 @@ using Infrastructure.DbContexts;
 using Microsoft.AspNetCore.Mvc;
 using Shared.DTO.Ingredient.Output;
 using Shared.Result;
+using System.Diagnostics.CodeAnalysis;
 
 namespace API.Endpoints.Ingredients;
+[ExcludeFromCodeCoverage]
+
 internal sealed class GetByIds : IEndpoint
 {
     public void MapEndpoint(IEndpointRouteBuilder app)

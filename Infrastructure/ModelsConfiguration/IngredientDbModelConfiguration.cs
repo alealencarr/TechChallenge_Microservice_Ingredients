@@ -1,9 +1,12 @@
 ﻿using Infrastructure.DbModels;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Infrastructure.ModelsConfiguration
 {
+    [ExcludeFromCodeCoverage]
+
     public class IngredientDbModelConfiguration : IEntityTypeConfiguration<IngredientDbModel>
     {
         public void Configure(EntityTypeBuilder<IngredientDbModel> entity)
